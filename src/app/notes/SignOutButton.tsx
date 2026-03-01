@@ -6,6 +6,7 @@ export default function SignOutBtn() {
       onClick={() => {
         signOut();
       }}
+      className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
     >
       Sign Out
     </button>
