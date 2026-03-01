@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# notes-app
 
-## Getting Started
+A minimal fullstack notes app with Google authentication. A learning project built on a modern production stack.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Next.js 16** (App Router) — frontend and server logic
+- **Drizzle ORM** + **Neon** (Postgres) — database and migrations
+- **Auth.js v5** + Google OAuth — authentication with database sessions
+- **Tailwind CSS v4** — styling
+- **GitLab CI/CD** — pipeline with automatic deployment
+- **Vercel** — hosting
+- **Bun** — package manager and runtime
+
+## Features
+
+- Sign in with Google
+- Create and delete notes
+- Each user sees only their own notes
+
+## Local Setup
+
+### Prerequisites
+
+- [Bun](https://bun.sh)
+- A [Neon](https://neon.tech) account or local Postgres instance
+
+### Install
+
+```zsh
+git clone git@gitlab.com:rozeraf/notes-app.git
+cd notes-app
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Create `.env.local` in the project root:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+DATABASE_URL=postgresql://...
+AUTH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
 
-## Learn More
+Generate `AUTH_SECRET`:
 
-To learn more about Next.js, take a look at the following resources:
+```zsh
+openssl rand -base64 32
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Get `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → OAuth 2.0 Client ID. Add `http://localhost:3000/api/auth/callback/google` to Authorized redirect URIs.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Migrate and Run
 
-## Deploy on Vercel
+```zsh
+bun db:generate   # generate migrations from schema
+bun db:migrate    # apply migrations (reads .env)
+bun dev           # start dev server
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open `http://localhost:3000`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## CI/CD
+
+The GitLab CI pipeline has four stages:
+
+- **test** — linting (all branches)
+- **build** — build via Vercel CLI, artifact `.vercel/output/` (main only)
+- **migrate** — apply migrations to the production DB (main only)
+- **deploy** — deploy prebuilt artifact to Vercel (main only)
+
+### GitLab CI Variables
+
+Add in GitLab → Settings → CI/CD → Variables:
+
+```
+VERCEL_TOKEN
+VERCEL_ORG_ID
+VERCEL_PROJECT_ID
+DATABASE_URL
+AUTH_SECRET
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+```
+
+## Database Schema
+
+Auth.js tables (`user`, `account`, `session`, `verificationToken`) are managed by `@auth/drizzle-adapter`. The app's own table:
+
+```sql
+CREATE TABLE note (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT REFERENCES user(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+```
+
+For a deeper look at how the pieces fit together, see [ARCHITECTURE.md](./ARCHITECTURE.md).
