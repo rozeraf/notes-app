@@ -29,7 +29,7 @@ export default async function NotesPage() {
           {notesList.map((note) => (
             <li
               key={note.id}
-              className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm"
+              className="flex items-center justify-between bg-white p-4 text-gray-800 rounded-lg shadow-sm"
             >
               <span>{note.title}</span>
               <DeleteButton id={note.id} />

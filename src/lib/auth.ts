@@ -6,7 +6,6 @@ import { env } from "@/lib/env";
 import { accounts, sessions, users, verificationTokens } from "@/db/schema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  debug: true,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
@@ -20,4 +19,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   session: { strategy: "database" },
+  pages: {
+    signIn: "/login",
+  },
+  callbacks: {
+    session({ session, user }) {
+      session.user.id = user.id;
+      return session;
+    },
+  },
 });
