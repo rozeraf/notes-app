@@ -1,0 +1,55 @@
+stages:
+  - test
+  - build
+  - migrate
+  - deploy
+
+variables:
+  BUN_INSTALL_CACHE_DIR: .bun-cache
+
+cache:
+  paths:
+    - .bun-cache/
+    - node_modules/
+
+test:
+  stage: test
+  image: oven/bun:latest
+  script:
+    - bun install --frozen-lockfile
+    - bun run lint
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+build:
+  stage: build
+  image: oven/bun:latest
+  script:
+    - bun install --frozen-lockfile
+    - bun add -g vercel
+    - vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+    - vercel build --prod --token=$VERCEL_TOKEN
+  artifacts:
+    paths:
+      - .vercel/output/
+    expire_in: 1 hour
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+migrate:
+  stage: migrate
+  image: oven/bun:latest
+  script:
+    - bun install --frozen-lockfile
+    - bun run db:migrate
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+deploy:
+  stage: deploy
+  image: oven/bun:latest
+  script:
+    - bun add -g vercel
+    - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
