@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import NoteForm from "./NoteForm";
+import DeleteButton from "./DeleteButton";
+import SignOutBtn from "./SignOutButton";
 
 export default async function NotesPage() {
   const session = await auth();
@@ -20,10 +22,13 @@ export default async function NotesPage() {
       <h1>Notes</h1>
       <ul>
         {notesList.map((note) => (
-          <li key={note.id}>{note.title}</li>
+          <li key={note.id}>
+            {note.title} <DeleteButton id={note.id} />
+          </li>
         ))}
       </ul>
       <NoteForm></NoteForm>
+      <SignOutBtn></SignOutBtn>
     </main>
   );
 }
