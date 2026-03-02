@@ -8,14 +8,34 @@ stages:
 variables:
   BUN_INSTALL_CACHE_DIR: .bun-cache
 
-cache:
-  key:
-    files:
-      - bun.lockb
-  paths:
-    - .bun-cache/
+default:
+  interruptible: true
+  retry:
+    max: 1
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+.cache-push:
+  cache:
+    key:
+      files:
+        - bun.lockb
+    paths:
+      - .bun-cache/
+    policy: push
+
+.cache-pull:
+  cache:
+    key:
+      files:
+        - bun.lockb
+    paths:
+      - .bun-cache/
+    policy: pull
 
 install:
+  extends: .cache-push
   stage: install
   image: oven/bun:latest
   script:
@@ -29,6 +49,7 @@ install:
     - if: '$CI_COMMIT_BRANCH == "dev"'
 
 test:
+  extends: .cache-pull
   stage: test
   image: oven/bun:latest
   script:
@@ -39,6 +60,7 @@ test:
     - if: '$CI_COMMIT_BRANCH == "dev"'
 
 build:
+  extends: .cache-pull
   stage: build
   image: oven/bun:latest
   script:
@@ -54,6 +76,7 @@ build:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 migrate:
+  extends: .cache-pull
   stage: migrate
   image: oven/bun:latest
   script:
@@ -63,8 +86,10 @@ migrate:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 deploy:
+  extends: .cache-pull
   stage: deploy
   image: oven/bun:latest
+  interruptible: false
   script:
     - bun add -g vercel
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
