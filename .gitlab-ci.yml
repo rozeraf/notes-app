@@ -10,50 +10,38 @@ variables:
 
 default:
   image: oven/bun:latest
-  interruptible: true
-  retry:
-    max: 1
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
 
-.cache:
-  cache:
-    key:
-      files:
-        - bun.lockb
-    paths:
-      - .bun-cache/
+cache:
+  key:
+    files:
+      - bun.lockb
+  paths:
+    - .bun-cache/
 
 install:
   stage: install
-  extends: .cache
   script:
     - bun install --frozen-lockfile
   artifacts:
     paths:
       - node_modules/
       - bun.lockb
-    expire_in: 2 hours
+    expire_in: 1 hour
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
 
 test:
   stage: test
-  extends: .cache
   needs:
     - job: install
       artifacts: true
   script:
     - bun run lint
   rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
 
 build:
   stage: build
-  extends: .cache
   needs:
     - job: install
       artifacts: true
@@ -63,29 +51,23 @@ build:
     - vercel build --prod --token=$VERCEL_TOKEN
   artifacts:
     paths:
-      - .vercel/
-      - node_modules/
-    expire_in: 2 hours
+      - .vercel/output/
+    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 migrate:
   stage: migrate
-  extends: .cache
   needs:
     - job: install
       artifacts: true
-    - job: build
-      artifacts: true
   script:
-    - bun run db:migrate:ci
+    - bun run db:migrate
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 deploy:
   stage: deploy
-  extends: .cache
-  interruptible: false
   needs:
     - job: build
       artifacts: true
