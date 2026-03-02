@@ -93,6 +93,9 @@ deploy:
   script:
     - bun add -g vercel
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-  needs: [migrate]
+  needs:
+    - job: migrate
+    - job: build
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
