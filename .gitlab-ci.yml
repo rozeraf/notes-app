@@ -1,4 +1,5 @@
 stages:
+  - install
   - test
   - build
   - migrate
@@ -6,26 +7,43 @@ stages:
 
 variables:
   BUN_INSTALL_CACHE_DIR: .bun-cache
+  VERCEL_ORG_ID: $VERCEL_ORG_ID
+  VERCEL_PROJECT_ID: $VERCEL_PROJECT_ID
 
 cache:
+  key:
+    files:
+      - bun.lockb
   paths:
     - .bun-cache/
-    - node_modules/
+
+install:
+  stage: install
+  image: oven/bun:latest
+  script:
+    - bun install --frozen-lockfile
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 hour
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
 
 test:
   stage: test
   image: oven/bun:latest
   script:
-    - bun install --frozen-lockfile
     - bun run lint
+  needs: [install]
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
 
 build:
   stage: build
   image: oven/bun:latest
   script:
-    - bun install --frozen-lockfile
     - bun add -g vercel
     - vercel pull --yes --environment=production --token=$VERCEL_TOKEN
     - vercel build --prod --token=$VERCEL_TOKEN
@@ -33,6 +51,7 @@ build:
     paths:
       - .vercel/output/
     expire_in: 1 hour
+  needs: [install]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
@@ -40,8 +59,8 @@ migrate:
   stage: migrate
   image: oven/bun:latest
   script:
-    - bun install --frozen-lockfile
-    - bun run db:migrate
+    - bun run db:migrate:ci
+  needs: [install, build]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
@@ -51,5 +70,6 @@ deploy:
   script:
     - bun add -g vercel
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+  needs: [migrate]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
