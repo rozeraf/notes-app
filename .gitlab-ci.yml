@@ -63,7 +63,7 @@ build:
     - vercel build --prod --token=$VERCEL_TOKEN
   artifacts:
     paths:
-      - .vercel/output/
+      - .vercel/
       - node_modules/
     expire_in: 2 hours
   rules:
