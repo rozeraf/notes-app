@@ -95,6 +95,7 @@ deploy:
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
   needs:
     - job: migrate
+      artifacts: false
     - job: build
       artifacts: true
   rules:
