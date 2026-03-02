@@ -9,6 +9,7 @@ variables:
   BUN_INSTALL_CACHE_DIR: .bun-cache
 
 default:
+  image: oven/bun:latest
   interruptible: true
   retry:
     max: 1
@@ -16,84 +17,81 @@ default:
       - runner_system_failure
       - stuck_or_timeout_failure
 
-.cache-push:
+.cache:
   cache:
     key:
       files:
         - bun.lockb
     paths:
       - .bun-cache/
-    policy: push
-
-.cache-pull:
-  cache:
-    key:
-      files:
-        - bun.lockb
-    paths:
-      - .bun-cache/
-    policy: pull
 
 install:
-  extends: .cache-push
   stage: install
-  image: oven/bun:latest
+  extends: .cache
   script:
     - bun install --frozen-lockfile
   artifacts:
     paths:
       - node_modules/
-    expire_in: 1 hour
+      - bun.lockb
+    expire_in: 2 hours
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_BRANCH == "dev"'
 
 test:
-  extends: .cache-pull
   stage: test
-  image: oven/bun:latest
+  extends: .cache
+  needs:
+    - job: install
+      artifacts: true
   script:
     - bun run lint
-  needs: [install]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_BRANCH == "dev"'
 
 build:
-  extends: .cache-pull
   stage: build
-  image: oven/bun:latest
+  extends: .cache
+  needs:
+    - job: install
+      artifacts: true
   script:
-    - bun install --frozen-lockfile
     - bun add -g vercel
     - vercel pull --yes --environment=production --token=$VERCEL_TOKEN
     - vercel build --prod --token=$VERCEL_TOKEN
   artifacts:
     paths:
       - .vercel/output/
-    expire_in: 1 hour
-  needs: [install]
+      - node_modules/
+    expire_in: 2 hours
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 migrate:
-  extends: .cache-pull
   stage: migrate
-  image: oven/bun:latest
+  extends: .cache
+  needs:
+    - job: install
+      artifacts: true
+    - job: build
+      artifacts: true
   script:
     - bun run db:migrate:ci
-  needs: [install, build]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 deploy:
-  extends: .cache-pull
   stage: deploy
-  image: oven/bun:latest
+  extends: .cache
   interruptible: false
+  needs:
+    - job: build
+      artifacts: true
+    - job: migrate
   script:
     - bun add -g vercel
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-  needs: [migrate, build]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
