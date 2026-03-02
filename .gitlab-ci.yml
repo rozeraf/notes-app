@@ -64,6 +64,7 @@ build:
   stage: build
   image: oven/bun:latest
   script:
+    - bun install --frozen-lockfile
     - bun add -g vercel
     - vercel pull --yes --environment=production --token=$VERCEL_TOKEN
     - vercel build --prod --token=$VERCEL_TOKEN
@@ -93,10 +94,6 @@ deploy:
   script:
     - bun add -g vercel
     - vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-  needs:
-    - job: migrate
-      artifacts: false
-    - job: build
-      artifacts: true
+  needs: [migrate]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
