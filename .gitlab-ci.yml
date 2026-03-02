@@ -7,8 +7,6 @@ stages:
 
 variables:
   BUN_INSTALL_CACHE_DIR: .bun-cache
-  VERCEL_ORG_ID: $VERCEL_ORG_ID
-  VERCEL_PROJECT_ID: $VERCEL_PROJECT_ID
 
 cache:
   key:
